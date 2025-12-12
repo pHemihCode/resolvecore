@@ -1,7 +1,8 @@
+import React from 'react'
 
 const Page = () => {
     return (
-        <div>Page</div>
+        <div>Auth page</div>
     )
 }
 export default Page

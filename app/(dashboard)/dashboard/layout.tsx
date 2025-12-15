@@ -1,11 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 
-const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
     title: {
@@ -15,19 +9,19 @@ export const metadata: Metadata = {
     description: "AI-powered technical support and ticketing platform",
 };
 
-export default function RootLayout({
+export default function Layout({
                                        children,
                                    }: Readonly<{
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
-        <body
+       <div className="min-h-screen flex">
+      <div className="hidden md:w-1/2 bg-blue-950 text-white text-2xl  md:flex md:justify-center md:items-center">
+      </div>
 
-        >
-        {children}
-
-        </body>
-        </html>
+      <main className="w-full md:w-1/2 flex items-center justify-center">
+        <div className="w-full max-w-md">{children}</div>
+      </main>
+    </div>
     );
 }

@@ -1,26 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+    --resolve-blue: #2563eb;
+    --resolve-blue-light: #3b82f6;
+    --resolve-blue-dark: #1d4ed8;
+    --resolve-white: #ffffff;
+    --resolve-gray-50: #f9fafb;
+    --resolve-gray-100: #f3f4f6;
+    --resolve-gray-200: #e5e7eb;
+    --resolve-gray-300: #d1d5db;
+    --resolve-gray-400:#ffffff;
+    --resolve-gray-600: #4b5563;
+    --resolve-gray-800: #1f2937;
+    --resolve-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --resolve-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --resolve-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #f0f7ff 0%, #f8fafc 100%);
+    min-height: 100vh;
+     box-sizing: border-box;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--resolve-gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--resolve-gray-300);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--resolve-gray-400);
 }

@@ -1,27 +1,10 @@
-import type { Metadata } from "next";
+import { Suspense } from "react";
+import DashboardContent from "./DashboardContent"
 
-
-export const metadata: Metadata = {
-    title: {
-        default: "ResolveCore – Technical Support Platform",
-        template: "%s | ReolveCore",
-    },
-    description: "AI-powered technical support and ticketing platform",
-};
-
-export default function Layout({
-                                       children,
-                                   }: Readonly<{
-    children: React.ReactNode;
-}>) {
-    return (
-       <div className="min-h-screen flex">
-      <div className="hidden md:w-1/2 bg-blue-950 text-white text-2xl  md:flex md:justify-center md:items-center">
-      </div>
-
-      <main className="w-full md:w-1/2 flex items-center justify-center">
-        <div className="w-full max-w-md">{children}</div>
-      </main>
-    </div>
-    );
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<p className="text-center py-10">Loading dashboard...</p>}>
+      <DashboardContent>{children}</DashboardContent>
+    </Suspense>
+  );
 }

@@ -30,7 +30,7 @@ export default function CompanyOnboarding() {
       if (!res.ok) throw new Error(data.message || "Something went wrong");
 
       // Redirect to dashboard after successful creation
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (err: any) {
       setError(err.message);
     } finally {

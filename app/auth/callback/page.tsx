@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "next-auth/react";
 import { Loader2 } from "lucide-react";
-
 export default function AuthCallbackPage() {
   const router = useRouter();
   const [loadingMessage, setLoadingMessage] = useState("Checking your account...");
@@ -31,9 +30,9 @@ export default function AuthCallbackPage() {
 
         // Step 3: Redirect accordingly
         if (data.hasCompany) {
-          router.push("/dashboard");
+          router.replace("/dashboard");
         } else {
-          router.push("/onboarding/company");
+          router.replace("/onboarding/company");
         }
       } catch (err: any) {
         console.error(err);

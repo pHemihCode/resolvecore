@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/mongodb";
 import Company from "@/models/company";
 import Widget from "@/models/widget";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     await connectDB();
 
-    const body = await req.json();
-    const { name, website, industry, size } = body;
+    const { name, website, industry, size } = await req.json();
 
     if (!name || !size) {
       return NextResponse.json(
@@ -23,8 +24,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if user already has a company
-    const existingCompany = await Company.findOne({ ownerId: session.user.id });
+    const existingCompany = await Company.findOne({
+      ownerId: session.user.id,
+    });
+
     if (existingCompany) {
       return NextResponse.json(
         { message: "Company already exists" },
@@ -32,7 +35,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create company
     const company = await Company.create({
       name,
       websiteUrl: website,
@@ -41,7 +43,6 @@ export async function POST(req: NextRequest) {
       ownerId: session.user.id,
     });
 
-    // Auto-create default widget
     await Widget.create({
       companyId: company._id,
       name: "Main Website Support",

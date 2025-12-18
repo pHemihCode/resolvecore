@@ -1,34 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "next-auth/react";
 import { Loader2 } from "lucide-react";
+
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const [loadingMessage, setLoadingMessage] = useState("Checking your account...");
-  const [error, setError] = useState("");
+
+  // FIX: Explicitly type state as string
+  const [loadingMessage, setLoadingMessage] = useState<string>("Checking your account...");
+  const [error, setError] = useState<string>("");
+
+  // FIX: Use useRef with the most robust type for setTimeout
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    async function checkSession() {
+    async function checkUserAndRedirect() {
       try {
-        // Step 1: Get user session
+        // Clear any existing timer when the effect runs
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+
         const session = await getSession();
         if (!session?.user?.email) {
           setError("You are not logged in.");
-          setTimeout(() => router.push("/auth/sign-in"), 2000);
+          timerRef.current = setTimeout(() => router.push("/auth/sign-in"), 2000);
           return;
         }
 
         setLoadingMessage("Verifying workspace...");
 
-        // Step 2: Check if company exists
         const res = await fetch("/api/company/check");
-        if (!res.ok) throw new Error("Failed to check company");
+
+        if (!res.ok) {
+          throw new Error("Failed to verify your account.");
+        }
 
         const data = await res.json();
 
-        // Step 3: Redirect accordingly
         if (data.hasCompany) {
           router.replace("/dashboard");
         } else {
@@ -36,11 +47,20 @@ export default function AuthCallbackPage() {
         }
       } catch (err: any) {
         console.error(err);
-        setError(err.message || "Something went wrong");
+        setError(err.message || "Something went wrong. Please try again.");
+        timerRef.current = setTimeout(() => router.push("/auth/sign-in"), 3000);
       }
     }
 
-    checkSession();
+    checkUserAndRedirect();
+
+    // CRITICAL: Add a cleanup function to prevent memory leaks
+    // This runs when the component is unmounted.
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
   }, [router]);
 
   return (

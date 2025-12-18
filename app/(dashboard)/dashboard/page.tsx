@@ -12,7 +12,6 @@ export default async function DashboardPage() {
   await connectDB();
 
   const company = await Company.findOne({ ownerId: session.user.id });
-  if (!company) redirect("/onboarding/company");
 
   return (
     <div className="min-h-screen p-6 bg-gray-50">

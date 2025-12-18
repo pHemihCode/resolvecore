@@ -25,7 +25,6 @@ export const authOptions: NextAuthOptions = {
           googleId: account?.providerAccountId,
         });
       }
-
       return true;
     },
 

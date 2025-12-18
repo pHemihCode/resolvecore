@@ -14,29 +14,37 @@ export default function CompanyOnboarding() {
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
+  e.preventDefault();
+  setIsLoading(true);
+  setError("");
 
-    try {
-      const res = await fetch("/api/company", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, website, industry, size }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.message || "Something went wrong");
-
-      // Redirect to dashboard after successful creation
-      router.replace("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
+  try {
+    const res = await fetch("/api/company", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ 
+        name, 
+        websiteUrl: website,
+        industry, 
+        companySize: size
+      }),
+    });
+    console.log(name, website, industry, size)
+    const data = await res.json();
+    if (!res.ok) {
+      // More specific error message
+      throw new Error(data.error || data.message || "Failed to create company");
     }
-  };
+
+    // Redirect to dashboard after successful creation
+    router.replace("/dashboard");
+  } catch (err: any) {
+    setError(err.message);
+    console.error("Company creation error:", err);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">

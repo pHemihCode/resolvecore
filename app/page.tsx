@@ -1,13 +1,9 @@
-// app/page.tsx
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import React from 'react'
 
-export default async function Home() {
-  const session = await getServerSession(authOptions);
-  if (session) {
-    redirect("/dashboard"); // Or check onboarding status
-  } else {
-    redirect("/auth/sign-in");
-  }
+const page = () => {
+  return (
+    <div>page</div>
+  )
 }
+
+export default page

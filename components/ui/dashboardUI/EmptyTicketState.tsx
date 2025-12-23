@@ -1,3 +1,4 @@
+"use client"
 import { ArrowRight, Ticket } from "lucide-react";
 import Link from "next/link"
 export const EmptyTicketsState = () => {

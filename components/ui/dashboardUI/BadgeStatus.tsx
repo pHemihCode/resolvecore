@@ -1,3 +1,4 @@
+"use client"
 type TicketStatus = "open" | "resolved" | "pending" | "on_hold";
 export const StatusBadge = ({ status }: { status: TicketStatus }) => {
   const statusConfig = {

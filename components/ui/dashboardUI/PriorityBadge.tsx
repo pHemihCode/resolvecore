@@ -1,3 +1,4 @@
+"use client"
 type TicketPriority = "low" | "medium" | "high" | "urgent";
 export const PriorityBadge = ({ priority }: { priority: TicketPriority }) => {
   const priorityConfig = {

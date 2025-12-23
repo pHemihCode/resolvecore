@@ -1,49 +1,29 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+// app/api/auth/[...nextauth]/route.ts
+import NextAuth, { type NextAuthOptions, type Session } from "next-auth"; // 1. Import Options and Session
 import GoogleProvider from "next-auth/providers/google";
-import { connectDB } from "@/lib/mongodb";
-import User from "@/models/user";
 
-export const authOptions: NextAuthOptions = {
+// 2. Type the config object as NextAuthOptions
+const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-
   callbacks: {
-    async signIn({ user, account }) {
-      await connectDB();
-
-      const existingUser = await User.findOne({ email: user.email });
-
-      if (!existingUser) {
-        await User.create({
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          googleId: account?.providerAccountId,
-        });
+    // 3. TypeScript now knows 'session' and 'token' types automatically!
+    async session({ session, token }) {
+      if (session?.user) {
+        session.user.id = token.sub!;
       }
-      return true;
-    },
-
-    async session({ session }) {
-      await connectDB();
-
-      const dbUser = await User.findOne({
-        email: session.user?.email,
-      });
-
-      if (dbUser) {
-        session.user.id = dbUser._id.toString();
-      }
-
       return session;
     },
+  },
+  pages: {
+    signIn: "/auth/sign-in",
   },
 };
 
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };
+export { authOptions };

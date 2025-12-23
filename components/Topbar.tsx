@@ -1,4 +1,3 @@
-// Updated Topbar with User Dropdown (Standard SaaS Pattern)
 "use client";
 
 import { useState, useRef, useEffect } from "react";

@@ -8,19 +8,21 @@ export async function proxy(req: NextRequest) {
     req, 
     secret: process.env.NEXTAUTH_SECRET, 
   });
-
   const { pathname } = req.nextUrl;
 
+  // Protect Dashboard and Ticket routes
   if (!token && pathname.startsWith("/dashboard")) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/auth/sign-in";
-    url.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL("/auth/sign-in", req.url));
+  }
+
+  // Protect the ROOT page (/)
+  if (!token && pathname === "/") {
+    return NextResponse.redirect(new URL("/auth/sign-in", req.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/","/dashboard/:path*", "/ticket/:path*"],
+  matcher: ["/", "/dashboard/:path*", "/ticket/:path*"],
 };

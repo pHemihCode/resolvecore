@@ -13,11 +13,16 @@ import {
   ChevronDown,
   X,
   SlidersHorizontal,
+  
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { StatCard } from "@/components/ui/dashboardUI/StatCard";
+import { FilterPagination } from "@/components/ui/dashboardUI/FilterPagination";
+import { PriorityBadge } from "@/components/ui/dashboardUI/PriorityBadge";
+import { EmptyTicketsState } from "@/components/ui/dashboardUI/EmptyTicketState";
+import { StatusBadge } from "@/components/ui/dashboardUI/BadgeStatus";
 // Types
 type TicketData = {
   id: string;
@@ -28,144 +33,13 @@ type TicketData = {
   createdDate: string;
 };
 
-type StatCardType = {
-  title: string;
-  value: number | string;
-  change?: string;
-  isPositive?: boolean;
-  icon: React.ReactNode;
-};
 
 type FilterOption = {
   label: string;
   value: string;
 };
 
-// ===== STAT CARD COMPONENT =====
-const StatCard = ({
-  title,
-  value,
-  change,
-  isPositive,
-  icon,
-}: StatCardType) => (
-  <motion.div
-    className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 transition-all hover:shadow-md"
-    whileHover={{ y: -5 }}
-  >
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-gray-600 text-sm">{title}</p>
-        <h3 className="text-2xl font-bold text-gray-900 mt-1">{value}</h3>
-        {change && (
-          <div
-            className={`flex items-center mt-2 text-xs font-medium ${
-              isPositive ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            <span>{isPositive ? "↑" : "↓"} {change}</span>
-            <span className="ml-1 text-gray-500">from last week</span>
-          </div>
-        )}
-      </div>
-      <div className="p-3 rounded-full bg-blue-50 text-blue-600">{icon}</div>
-    </div>
-  </motion.div>
-);
 
-// ===== FILTER PAGINATION COMPONENT =====
-interface FilterPaginationProps {
-  items: FilterOption[];
-  itemsPerPage: number;
-  currentPage: number;
-  onPageChange: (page: number) => void;
-}
-
-const FilterPagination = ({
-  items,
-  itemsPerPage,
-  currentPage,
-  onPageChange,
-}: FilterPaginationProps) => {
-  const totalPages = Math.ceil(items.length / itemsPerPage);
-
-  if (items.length <= itemsPerPage) return null;
-
-  return (
-    <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
-      <div className="text-xs text-gray-500">
-        Showing{" "}
-        {(currentPage - 1) * itemsPerPage + 1}-
-        {Math.min(currentPage * itemsPerPage, items.length)} of {items.length}{" "}
-        options
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-          disabled={currentPage === 1}
-          className={`p-1 rounded ${
-            currentPage === 1
-              ? "text-gray-300 cursor-not-allowed"
-              : "text-gray-600 hover:bg-gray-100 cursor-pointer"
-          }`}
-          aria-label="Previous page"
-        >
-          <ChevronLeft size={16} />
-        </button>
-
-        <div className="flex items-center gap-1">
-          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-            const pageNum = i + 1;
-            const actualPage = pageNum;
-            return (
-              <button
-                key={pageNum}
-                onClick={() => onPageChange(actualPage)}
-                className={`w-6 h-6 rounded text-xs flex items-center justify-center ${
-                  currentPage === actualPage
-                    ? "bg-blue-50 text-blue-600 border border-blue-200"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-                aria-label={`Go to page ${actualPage}`}
-              >
-                {actualPage}
-              </button>
-            );
-          })}
-          {totalPages > 5 && currentPage > 3 && (
-            <>
-              <span className="text-gray-500 flex items-center px-1">...</span>
-              <button
-                onClick={() => onPageChange(totalPages)}
-                className={`w-6 h-6 rounded text-xs flex items-center justify-center ${
-                  currentPage === totalPages
-                    ? "bg-blue-50 text-blue-600 border border-blue-200"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-                aria-label={`Go to page ${totalPages}`}
-              >
-                {totalPages}
-              </button>
-            </>
-          )}
-        </div>
-
-        <button
-          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage === totalPages}
-          className={`p-1 rounded ${
-            currentPage === totalPages
-              ? "text-gray-300 cursor-not-allowed"
-              : "text-gray-600 hover:bg-gray-100 cursor-pointer"
-          }`}
-          aria-label="Next page"
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
-    </div>
-  );
-};
 
 // ===== FILTER SECTION COMPONENT =====
 interface FilterSectionProps {
@@ -223,81 +97,18 @@ const FilterSection = ({
 };
 
 // ===== STATUS BADGE COMPONENT =====
-interface StatusBadgeProps {
-  status: string;
-}
 
-const StatusBadge = ({ status }: StatusBadgeProps) => {
-  const statusConfig: Record<string, { color: string; label: string }> = {
-    open: { color: "bg-red-100 text-red-800", label: "Open" },
-    resolved: { color: "bg-green-100 text-green-800", label: "Resolved" },
-    pending: { color: "bg-blue-100 text-blue-800", label: "Pending" },
-    on_hold: { color: "bg-yellow-100 text-yellow-800", label: "On Hold" },
-  };
 
-  const config =
-    statusConfig[status] || { color: "bg-gray-100 text-gray-800", label: status };
-
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>
-      {config.label}
-    </span>
-  );
-};
-
-// ===== PRIORITY BADGE COMPONENT =====
-interface PriorityBadgeProps {
-  priority: string;
-}
-
-const PriorityBadge = ({ priority }: PriorityBadgeProps) => {
-  const priorityConfig: Record<string, { color: string; label: string }> = {
-    urgent: { color: "bg-red-500", label: "Urgent" },
-    high: { color: "bg-orange-500", label: "High" },
-    medium: { color: "bg-yellow-500", label: "Medium" },
-    low: { color: "bg-green-500", label: "Low" },
-  };
-
-  const config =
-    priorityConfig[priority] || { color: "bg-gray-500", label: priority };
-
-  return (
-    <div className="flex items-center">
-      <div className={`h-2 w-2 rounded-full ${config.color} mr-2`}></div>
-      <span className="text-sm text-gray-700">{config.label}</span>
-    </div>
-  );
-};
-
-// ===== EMPTY STATE COMPONENT =====
-interface EmptyTicketsStateProps {
-  onClearFilters: () => void;
-}
-
-const EmptyTicketsState = ({ onClearFilters }: EmptyTicketsStateProps) => (
-  <div className="flex flex-col items-center justify-center py-16 text-center">
-    <div className="bg-gray-100 rounded-full p-6 mb-6">
-      <Ticket className="h-12 w-12 text-gray-400" />
-    </div>
-    <h3 className="text-lg font-medium text-gray-900 mb-2">No tickets found</h3>
-    <p className="text-gray-500 max-w-md mb-6">
-      Try adjusting your search or filter criteria to find what you're looking
-      for.
-    </p>
-    <div className="flex gap-3">
-      <button
-        onClick={onClearFilters}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        Clear Filters
-      </button>
-    </div>
-  </div>
-);
 
 // ===== MAIN DASHBOARD COMPONENT =====
 export default function DashboardPage() {
-  // ===== STATS DATA =====
+  type StatCardType = {
+  title: string;
+  value: number | string;
+  change?: string;
+  isPositive?: boolean;
+  icon: React.ReactNode;
+};
   const stats: StatCardType[] = [
     {
       title: "Total Tickets",

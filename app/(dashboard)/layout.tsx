@@ -1,4 +1,4 @@
-import DashboardProvider from "@/components/ui/dashboardUI/DashboardProvider";
+import DashboardLayoutComp from "@/components/ui/dashboardUI/DashboardLayoutComp";
 import Loading from "@/components/ui/Loading";
 import { Suspense } from "react";
 
@@ -10,7 +10,7 @@ export default function DashboardLayout({
 
   return (
    <Suspense fallback={<Loading />}>
-     <DashboardProvider>{children}</DashboardProvider>
+     <DashboardLayoutComp>{children}</DashboardLayoutComp>
    </Suspense>
   );
 }

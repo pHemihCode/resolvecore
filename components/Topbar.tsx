@@ -3,12 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { LogOut, Settings, User } from "lucide-react";
+import { LogOut, Settings, Menu } from "lucide-react";
 import Avatar from "@/assets/avatar.png";
 import Image from "next/image";
-import LogoutButton from "@/components/ui/LogoutButton"; // Adjust path if needed (based on your Sidebar import)
+import LogoutButton from "@/components/ui/LogoutButton";
 
-export default function Topbar() {
+export default function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   const { data } = useSession();
   const user = data?.user;
   const [isOpen, setIsOpen] = useState(false);
@@ -17,7 +17,10 @@ export default function Topbar() {
   // Close on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -46,9 +49,20 @@ export default function Topbar() {
   return (
     <header className="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-10">
       {/* Left: Welcome message */}
-      <p className="text-sm text-gray-600">
-        Welcome, <span className="font-medium text-gray-900">{user?.name}</span>
-      </p>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={onMenuClick}
+          className="p-2 -ml-2 rounded-md text-gray-600 hover:bg-gray-100 lg:hidden focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+
+        {/* Welcome message */}
+        <p className="text-sm text-gray-600">
+          <span className="hidden sm:inline">Welcome, </span>
+          <span className="font-medium text-gray-900">{user?.name}</span>
+        </p>
+      </div>
 
       {/* Right: Avatar Dropdown Trigger */}
       <div className="relative" ref={dropdownRef}>
@@ -73,9 +87,13 @@ export default function Topbar() {
           <div className="absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-xl py-1 z-50 animate-in fade-in slide-in-from-top-1 duration-200">
             {/* Profile Info */}
             <div className="px-4 py-3 border-b border-gray-100">
-              <div className="font-medium text-gray-900 text-sm">{user?.name}</div>
+              <div className="font-medium text-gray-900 text-sm">
+                {user?.name}
+              </div>
               {user?.email && (
-                <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                <div className="text-xs text-gray-500 truncate">
+                  {user.email}
+                </div>
               )}
             </div>
 

@@ -1,9 +1,12 @@
+// app/api/company/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import {connectDB} from "@/lib/mongodb";
+import { authOptions } from "@/lib/authOptions";
+import { connectDB } from "@/lib/mongodb";
 import Company from "@/models/company";
 import Widget from "@/models/widget";
+import User from "@/models/user";
+import { generateWidgetKey } from "@/lib/generate-widget-key";
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,11 +31,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Connect to DB and check if user already has a company
+    // 3. Connect to DB
     await connectDB();
-    
+
+    // 4. Find the user in the database to get their MongoDB _id
+    const dbUser = await User.findOne({ email: session.user.email });
+
+    if (!dbUser) {
+      return NextResponse.json(
+        { error: "User not found in database." },
+        { status: 404 }
+      );
+    }
+
+    // 5. Check if user already has a company
     const existingCompany = await Company.findOne({
-      owner: session.user.id,
+      owner: dbUser._id,
     });
 
     if (existingCompany) {
@@ -42,42 +56,66 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Create the company WITH the ownerId field
+    // 6. Create the company
     const newCompany = await Company.create({
       name,
       websiteUrl: websiteUrl || "",
       industry: industry || "",
       companySize,
-      owner: session.user.id,
+      owner: dbUser._id,
     });
 
-    // 5. Create a default widget for the company
-    await Widget.create({
+    // 7. Generate unique widget key
+    const widgetKey = generateWidgetKey();
+
+    // 8. Create a default widget for the company WITH the widgetKey
+    const newWidget = await Widget.create({
       companyId: newCompany._id,
+      widgetKey: widgetKey, // ✅ Now including the required widgetKey
       name: "Main Website Support",
-      brandColor: "#000000",
+      brandColor: "#6366f1",
       position: "bottom-right",
-      welcomeMessage: "Hi! How can I help you today?",
-      isActive: false,
+      welcomeMessage: "Hi! How can we help you today?",
+      isActive: true,
     });
 
-    // 6. Return success response
+    console.log("✅ Company created:", newCompany._id);
+    console.log("✅ Widget created with key:", widgetKey);
+
+    // 9. Return success response
     return NextResponse.json(
-      { 
+      {
         success: true,
         message: "Company created successfully",
-        company: newCompany 
+        company: {
+          _id: newCompany._id,
+          name: newCompany.name,
+        },
+        widget: {
+          _id: newWidget._id,
+          widgetKey: widgetKey,
+        },
       },
       { status: 201 }
     );
-
   } catch (error: any) {
     console.error("Error creating company:", error);
-    
-    // Handle Mongoose validation errors specifically
-    if (error.name === 'ValidationError') {
+
+    // Handle Mongoose validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(
+        (err: any) => err.message
+      );
       return NextResponse.json(
-        { error: error.message },
+        { error: "Validation failed", details: messages },
+        { status: 400 }
+      );
+    }
+
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { error: "A company with this information already exists." },
         { status: 400 }
       );
     }

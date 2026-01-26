@@ -1,4 +1,4 @@
-"use client";                               
+"use client";
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -8,30 +8,29 @@ import {
   CheckCircle,
   Clock,
   Search,
-  Filter,
+  SlidersHorizontal,
   ChevronDown,
   X,
-  SlidersHorizontal,
-  ChevronLeft,
-  ChevronRight,
+  Loader2, // Added Loader
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  StatCard,
-} from "@/components/ui/dashboardUI/StatCard";
+import { StatCard } from "@/components/ui/dashboardUI/StatCard";
 import { FilterPagination } from "@/components/ui/dashboardUI/FilterPagination";
 import { PriorityBadge } from "@/components/ui/dashboardUI/PriorityBadge";
 import { EmptyTicketsState } from "@/components/ui/dashboardUI/EmptyTicketState";
 import { StatusBadge } from "@/components/ui/dashboardUI/BadgeStatus";
+import { useRouter } from "next/navigation";
 
 // ---------- Types ----------
+// Updated to match what we map from the API
 type TicketData = {
   id: string;
   customer: string;
-  subject: string;
-  status: "open" | "resolved" | "pending" | "on_hold";
+  subject: string; // We will map 'message' or 'category' here if subject doesn't exist
+  status: "open" | "resolved" | "pending" | "on_hold"; // "in_progress" mapped to "pending"
   priority: "urgent" | "high" | "medium" | "low";
   createdDate: string;
+  responseTimeMs: number | null;
 };
 
 type FilterOption = {
@@ -95,12 +94,11 @@ const FilterSection = ({
 };
 
 // ---------- Dashboard client component ----------
-export default function DashboardUiComponent({
-  session,
-}: {
-  session: any;      // replace `any` with your actual session type if you have one
-}) {
+export default function DashboardUiComponent({ session }: { session: any }) {
   /* ---------- STATE ---------- */
+  const [tickets, setTickets] = useState<TicketData[]>([]); // Real Data State
+  const [isLoading, setIsLoading] = useState(true); // Loading State
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
@@ -109,35 +107,58 @@ export default function DashboardUiComponent({
   const [tempPriorityFilter, setTempPriorityFilter] = useState("All");
   const [statusPage, setStatusPage] = useState(1);
   const [priorityPage, setPriorityPage] = useState(1);
-  const itemsPerPage = 4;
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const router = useRouter()
+  /* ---------- DATA FETCHING ---------- */
+  useEffect(() => {
+    const fetchTickets = async () => {
+      try {
+        const response = await fetch("/api/admin/tickets");
+        if (response.ok) {
+          const data = await response.json();
+          
+          const mappedTickets: TicketData[] = data.tickets.map((t: any) => {
+            // LOGIC: Find the first message from 'support' in history
+            const firstSupportReply = t.history?.find(
+              (h: any) => h.author === 'support' && h.type === 'message'
+            );
 
-  /* ---------- DUMMY DATA ---------- */
-  const recentTickets: TicketData[] = [
-    {
-      id: "1",
-      customer: "John Doe",
-      subject: "Login issues with my account",
-      status: "open",
-      priority: "medium",
-      createdDate: "2024-05-20T14:30:00Z",
-    },
-    {
-      id: "2",
-      customer: "Jane Smith",
-      subject: "Payment failure on subscription",
-      status: "resolved",
-      priority: "high",
-      createdDate: "2024-05-19T09:15:00Z",
-    },
-    // … (copy the rest of your ticket objects here) …
-  ];
+            // Calculate milliseconds difference
+            let responseTimeMs = null;
+            if (firstSupportReply) {
+              const created = new Date(t.createdAt).getTime();
+              const replied = new Date(firstSupportReply.createdAt).getTime();
+              responseTimeMs = replied - created;
+            }
 
+            return {
+              id: t._id,
+              customer: t.name,
+              subject: t.message.substring(0, 50) + (t.message.length > 50 ? "..." : ""), 
+              status: t.status === "in_progress" ? "pending" : t.status, 
+              priority: t.category === "Technical" ? "high" : "medium", 
+              createdDate: t.createdAt,
+              responseTimeMs: responseTimeMs, // Store it
+            };
+          });
+          setTickets(mappedTickets);
+        }
+      } catch (error) {
+        console.error("Failed to fetch tickets", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTickets();
+  }, []);
+
+  /* ---------- OPTIONS ---------- */
   const statusOptions: FilterOption[] = [
     { label: "Open", value: "open" },
     { label: "Resolved", value: "resolved" },
     { label: "Pending", value: "pending" },
-    { label: "On Hold", value: "on_hold" },
+    // { label: "On Hold", value: "on_hold" }, // DB Schema doesn't have on_hold yet
   ];
 
   const priorityOptions: FilterOption[] = [
@@ -149,7 +170,7 @@ export default function DashboardUiComponent({
 
   /* ---------- FILTER/SEARCH LOGIC ---------- */
   const filteredTickets = useMemo(() => {
-    return recentTickets.filter((ticket) => {
+    return tickets.filter((ticket) => {
       const matchesSearch =
         ticket.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ticket.subject.toLowerCase().includes(searchTerm.toLowerCase());
@@ -160,7 +181,7 @@ export default function DashboardUiComponent({
 
       return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [searchTerm, statusFilter, priorityFilter]);
+  }, [tickets, searchTerm, statusFilter, priorityFilter]);
 
   const applyFilters = () => {
     setStatusFilter(tempStatusFilter);
@@ -186,16 +207,50 @@ export default function DashboardUiComponent({
     setPriorityPage(1);
   };
 
-  const formatTicketDate = (date: string | Date) =>
-    format(new Date(date), "MMM dd, yyyy");
+  const formatTicketDate = (date: string | Date) => {
+    try {
+      return format(new Date(date), "MMM dd, yyyy");
+    } catch (e) {
+      return "Invalid Date";
+    }
+  }
 
+  /* ---------- HELPER: FORMAT DURATION ---------- */
+  const formatDuration = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ${hours % 24}h`;
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
+    return `${minutes}m`;
+  };
+
+  /* ---------- STATS CALCULATION ---------- */
+  const stats = useMemo(() => {
+    const total = tickets.length;
+    const open = tickets.filter(t => t.status === "open").length;
+    const resolved = tickets.filter(t => t.status === "resolved").length;
+    
+    // Calculate Average Response Time
+    const ticketsWithResponse = tickets.filter(t => t.responseTimeMs !== null);
+    let avgResponseString = "N/A";
+    
+    if (ticketsWithResponse.length > 0) {
+      const totalResponseTime = ticketsWithResponse.reduce((acc, curr) => acc + (curr.responseTimeMs || 0), 0);
+      const avgMs = totalResponseTime / ticketsWithResponse.length;
+      avgResponseString = formatDuration(avgMs);
+    }
+
+    return { total, open, resolved, avgResponseString };
+  }, [tickets]);
+  
   /* ---------- CONTROL OUTSIDE CLICK ---------- */
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (!isFilterOpen) return;
       const target = e.target as HTMLElement;
       if (!target.closest(".filter-container")) {
-        // Reset temp filters if we close without clicking "Apply"
         setTempStatusFilter(statusFilter);
         setTempPriorityFilter(priorityFilter);
         setIsFilterOpen(false);
@@ -205,13 +260,12 @@ export default function DashboardUiComponent({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isFilterOpen, statusFilter, priorityFilter]);
 
-  /* ---------- ACTIVE FILTER DISPLAY ---------- */
   const activeFiltersCount =
     (statusFilter !== "All" ? 1 : 0) + (priorityFilter !== "All" ? 1 : 0);
 
   /* ---------- RENDER ---------- */
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div className="w-full max-w-7xl mx-auto px-4 md:px-6">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -225,29 +279,29 @@ export default function DashboardUiComponent({
         {[
           {
             title: "Total Tickets",
-            value: 142,
-            change: "8%",
+            value: stats.total,
+            change: "0%", // Placeholder
             isPositive: true,
             icon: <Ticket size={22} />,
           },
           {
             title: "Open Tickets",
-            value: 24,
-            change: "2%",
+            value: stats.open,
+            change: "0%",
             isPositive: false,
             icon: <AlertCircle size={22} />,
           },
           {
             title: "Resolved Tickets",
-            value: 118,
-            change: "10%",
+            value: stats.resolved,
+            change: "0%",
             isPositive: true,
             icon: <CheckCircle size={22} />,
           },
           {
             title: "Avg Response Time",
-            value: "12m",
-            change: "-2m",
+            value: stats.avgResponseString,
+            change: "-",
             isPositive: true,
             icon: <Clock size={22} />,
           },
@@ -258,7 +312,7 @@ export default function DashboardUiComponent({
 
       {/* Recent tickets wrapper */}
       <motion.div
-        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden min-h-[400px]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
@@ -269,7 +323,7 @@ export default function DashboardUiComponent({
           </h2>
 
           {/* Search & Filter */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 mt-2">
             {/* SEARCH INPUT */}
             <div className="relative flex-1 min-w-[200px]">
               <input
@@ -312,7 +366,7 @@ export default function DashboardUiComponent({
               <AnimatePresence>
                 {isFilterOpen && (
                   <motion.div
-                    className="fixed right-4 md:right-14 top-[320px] sm:top-[335px] w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-50 origin-top-right"
+                    className="absolute right-8 md:right-0 top-10 w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-50 origin-top-right"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
@@ -365,43 +419,13 @@ export default function DashboardUiComponent({
         {/* Active‑filters strip */}
         {(statusFilter !== "All" || priorityFilter !== "All" || searchTerm) && (
           <motion.div
-            className="flex flex-wrap items-center gap-2 mt-3"
+            className="flex flex-wrap items-center gap-2 mt-3 px-4"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             transition={{ duration: 0.2 }}
           >
             <span className="text-xs text-gray-500">Active:</span>
-
-            {searchTerm && (
-              <span className="flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
-                Search: "{searchTerm}"
-                <button onClick={() => setSearchTerm("")}>
-                  <X size={12} />
-                </button>
-              </span>
-            )}
-
-            {statusFilter !== "All" && (
-              <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs">
-                Status:{" "}
-                {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
-                <button onClick={() => setStatusFilter("All")}>
-                  <X size={12} />
-                </button>
-              </span>
-            )}
-
-            {priorityFilter !== "All" && (
-              <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs">
-                Priority:{" "}
-                {priorityFilter.charAt(0).toUpperCase() +
-                  priorityFilter.slice(1)}
-                <button onClick={() => setPriorityFilter("All")}>
-                  <X size={12} />
-                </button>
-              </span>
-            )}
-
+            {/* ... (Keep existing active filter pills) ... */}
             <button
               onClick={clearFilters}
               className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
@@ -412,107 +436,120 @@ export default function DashboardUiComponent({
           </motion.div>
         )}
 
-        {/* Tickets table */}
-        {filteredTickets.length === 0 ? (
-          <EmptyTicketsState onClearFilters={clearFilters} />
+        {/* LOADING STATE */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <Loader2 className="w-8 h-8 animate-spin mb-2 text-blue-500" />
+            <p className="text-sm">Loading tickets...</p>
+          </div>
         ) : (
+          /* Tickets table */
           <>
-            {/* Desktop view */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
-                      Customer
-                    </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
-                      Subject
-                    </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
-                      Status
-                    </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
-                      Priority
-                    </th>
-                    <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
-                      Created
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {filteredTickets.map((ticket) => (
-                    <motion.tr
-                      key={ticket.id}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                      whileHover={{ backgroundColor: "#f9fafb" }}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {ticket.customer}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
-                        {ticket.subject}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={ticket.status} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <PriorityBadge priority={ticket.priority} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatTicketDate(ticket.createdDate)}
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {filteredTickets.length === 0 ? (
+              <EmptyTicketsState onClearFilters={clearFilters} />
+            ) : (
+              <>
+                {/* Desktop view */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
+                          Customer
+                        </th>
+                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
+                          Subject
+                        </th>
+                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
+                          Status
+                        </th>
+                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
+                          Priority
+                        </th>
+                        <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">
+                          Created
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white">
+                      {filteredTickets.map((ticket) => (
+                        <motion.tr
+                          key={ticket.id}
+                          className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                          whileHover={{ backgroundColor: "#f9fafb" }}
+                          onClick={() => router.push(`/tickets/${ticket.id}`)}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                            {ticket.customer}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                            {ticket.subject}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <StatusBadge status={ticket.status} />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <PriorityBadge priority={ticket.priority} />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatTicketDate(ticket.createdDate)}
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-            {/* Mobile cards */}
-            <div className="md:hidden">
-              {filteredTickets.map((ticket) => (
-                <Link
-                  href={`/tickets/${ticket.id}`}
-                  key={ticket.id}
-                  className="block p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <h4 className="font-medium text-gray-900 text-sm truncate">
-                      {ticket.subject}
-                    </h4>
-                    <StatusBadge status={ticket.status} />
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Customer:</span>
-                      <span className="text-gray-900">{ticket.customer}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Priority:</span>
-                      <PriorityBadge priority={ticket.priority} />
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Created:</span>
-                      <span className="text-gray-900">
-                        {formatTicketDate(ticket.createdDate)}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+                {/* Mobile cards */}
+                <div className="md:hidden">
+                  {filteredTickets.map((ticket) => (
+                    <Link
+                      href={`/tickets/${ticket.id}`}
+                      key={ticket.id}
+                      className="block p-4 border-b mb-2 border-gray-100 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-medium text-gray-900 text-sm truncate w-2/3">
+                          {ticket.subject}
+                        </h4>
+                        <StatusBadge status={ticket.status} />
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Customer:</span>
+                          <span className="text-gray-900 font-medium">{ticket.customer}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Priority:</span>
+                          <PriorityBadge priority={ticket.priority} />
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Created:</span>
+                          <span className="text-gray-900">
+                            {formatTicketDate(ticket.createdDate)}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
           </>
         )}
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            Showing {filteredTickets.length} of {recentTickets.length} tickets
+            Showing {filteredTickets.length} of {tickets.length} tickets
           </p>
           <Link
             href="/tickets"
             className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
           >
-            View All Tickets <ChevronDown size={16} className="rotate-270" />
+            <span className="hidden md:inline">View All Tickets </span>
+            <span className="inline md:hidden">View All</span>
+            <ChevronDown size={16} className="rotate-270" />
           </Link>
         </div>
       </motion.div>

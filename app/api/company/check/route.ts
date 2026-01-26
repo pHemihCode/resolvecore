@@ -1,7 +1,7 @@
 // app/api/company/check/route.ts
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/user";
 import Company from "@/models/company";
